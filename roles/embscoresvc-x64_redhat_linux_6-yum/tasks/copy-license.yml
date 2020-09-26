@@ -1,0 +1,21 @@
+---
+- include: '{{ orchestration_root }}/roles/framework/tasks/main.yml'
+  loop_control:
+    loop_var: consumer_data
+  when: consumer_data.key is search('\-license-action')
+  with_dict: '{{ consumer_items | default({}) }}'
+
+- name: Get stats for {{ sasenv_license }}
+  local_action: stat path="{{ sasenv_license }}"
+  register: copy_file_1
+
+- name: Confirm {{ sasenv_license }} exists
+  fail: msg="File '{{ sasenv_license }}' not found"
+  failed_when: copy_file_1.stat.exists == false
+
+- name: Copy from {{ sasenv_license }} to {{ SAS_CONFIG_ROOT }}/etc/SASMicroAnalyticService/setinit.txt
+  become: 'yes'
+  become_user: root
+  copy: src="{{ sasenv_license }}" dest="{{ SAS_CONFIG_ROOT }}/etc/SASMicroAnalyticService/setinit.txt" owner={{ INSTALL_USER }} group={{ INSTALL_GROUP }} mode="0640"
+  when: copy_file_1.stat.exists == true
+
